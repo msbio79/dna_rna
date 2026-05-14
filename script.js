@@ -631,6 +631,10 @@ workspace.addEventListener('wheel', (e) => {
 // Touch Pan & Zoom (Pinch)
 let initialPinchDistance = null;
 let initialZoom = 1;
+let initialPanX = 0;
+let initialPanY = 0;
+let initialPinchCenterX = 0;
+let initialPinchCenterY = 0;
 
 workspace.addEventListener('touchstart', (e) => {
   if (e.target.closest('.nucleotide')) return;
@@ -645,6 +649,12 @@ workspace.addEventListener('touchstart', (e) => {
       e.touches[0].clientY - e.touches[1].clientY
     );
     initialZoom = zoom;
+    
+    const rect = workspace.getBoundingClientRect();
+    initialPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    initialPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    initialPanX = panX;
+    initialPanY = panY;
   }
 }, { passive: false });
 
@@ -655,14 +665,21 @@ workspace.addEventListener('touchmove', (e) => {
     panX = e.touches[0].clientX - panStartX;
     panY = e.touches[0].clientY - panStartY;
     updateCanvasTransform();
-  } else if (e.touches.length === 2) {
+  } else if (e.touches.length === 2 && initialPinchDistance) {
     const currentDistance = Math.hypot(
       e.touches[0].clientX - e.touches[1].clientX,
       e.touches[0].clientY - e.touches[1].clientY
     );
-    zoom = initialZoom * (currentDistance / initialPinchDistance);
+    const zoomFactor = currentDistance / initialPinchDistance;
+    zoom = initialZoom * zoomFactor;
 
-    // Smooth pinch zoom around center for simplicity
+    const rect = workspace.getBoundingClientRect();
+    const currentPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    const currentPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+    panX = currentPinchCenterX - (initialPinchCenterX - initialPanX) * zoomFactor;
+    panY = currentPinchCenterY - (initialPinchCenterY - initialPanY) * zoomFactor;
+
     updateCanvasTransform();
   }
 }, { passive: false });
